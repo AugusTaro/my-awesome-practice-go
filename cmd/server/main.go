@@ -6,10 +6,14 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello World!")
-	http.HandleFunc("/", helloHandler)
-	http.ListenAndServe(":8080", nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", helloHandler)
+	mux.HandleFunc("/health", healthHandler)
+	http.ListenAndServe(":8080", mux)
 }
 func helloHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, World!")
+	fmt.Fprintf(w, "Hello, World!\n")
+}
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "OK\n")
 }
