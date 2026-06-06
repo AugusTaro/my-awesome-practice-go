@@ -1,0 +1,13 @@
+### health
+GET http://localhost:8080/health
+
+### create todo
+POST http://localhost:8080/todos
+Content-Type: application/json
+
+{
+  "name": "水島"
+}
+
+### list todos
+GET http://localhost:8080/todos
