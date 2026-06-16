@@ -42,6 +42,10 @@ func (s *TodoStore) Add(name string) Todo {
 	s.nextID++
 	return todo
 }
+
+func (s *TodoStore) List() []Todo {
+	return s.todos
+}
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK\n")
 }
@@ -60,5 +64,5 @@ func CreateTodoHandler(w http.ResponseWriter, r *http.Request, s *TodoStore) {
 }
 func GetTodosHandler(w http.ResponseWriter, r *http.Request, s *TodoStore) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.todos)
+	json.NewEncoder(w).Encode(s.List())
 }
