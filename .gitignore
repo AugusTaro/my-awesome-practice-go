@@ -1,0 +1,11 @@
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Air
+tmp/
+
+# OS/editor
+.DS_Store
+.vscode/

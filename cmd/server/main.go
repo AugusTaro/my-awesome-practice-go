@@ -1,12 +1,31 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
+	db, err := sql.Open("sqlite3", "todo.db")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS todos(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL
+	)
+`)
+	if err != nil {
+		panic(err)
+	}
+
 	var store = TodoStore{
 		nextID: 1,
 	}
