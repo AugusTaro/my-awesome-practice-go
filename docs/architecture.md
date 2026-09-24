@@ -4,7 +4,7 @@
 
 GoでTodo APIを**フルスクラッチ・手書き**で作り、次を身につける。
 
-- `net/http` と `database/sql` だけでWebサーバを組む方法（フレームワーク・ORMは使わない）
+- `net/http` 標準だけでWebサーバを組む方法（フレームワーク・ORMは使わない。DBを入れるときも `database/sql` で生SQL）
 - シンプルな3層アーキテクチャの責務分担と依存方向
 - Goらしいinterfaceの切り方（利用側が定義し、実装側は暗黙的に満たす）
 
@@ -16,14 +16,14 @@ GoでTodo APIを**フルスクラッチ・手書き**で作り、次を身につ
 ## 基本アーキテクチャ：Feature 単位のシンプルな3層
 
 ```txt
-Handler → Service → Repository → DB(生SQL)
+Handler → Service → Repository → 保存先（インメモリ → SQLite）
 ```
 
 | 層 | 責務 |
 | --- | --- |
 | Handler | HTTPの入出力。`http.ResponseWriter` / `*http.Request` を触るのはここだけ |
 | Service | ユースケース・業務処理。処理の段取りと業務ルール |
-| Repository | 永続化。`database/sql` で生SQLを書く |
+| Repository | 永続化。最初はインメモリのスライスで十分。DBが必要になったら `database/sql` + SQLite で生SQL |
 
 ディレクトリは Feature 単位でまとめる。
 
@@ -74,11 +74,12 @@ Clean Architecture や DDD は**採用するもの**ではなく、**実装上�
 ### Phase 1：素朴なWeb API
 
 ```txt
-Handler → Service → Repository → DB
+Handler → Service → Repository → インメモリのスライス
 ```
 
 - 具体型でよい。interfaceは切らない
 - 単純なstructでよい。振る舞いを持たせない
+- 永続化はインメモリで十分。DBを入れない
 - DDDしない。Clean Architectureを意識しない
 
 機能は Todo の CRUD。
@@ -94,6 +95,7 @@ DELETE /todos/{id}
 ### Phase 2：抽象化する理由を作る
 
 ```txt
+インメモリを SQLite に差し替えたい（Service を触らずに）
 DBがテストの邪魔になる
 外部サービスとの通信が追加される
         ↓
@@ -104,6 +106,7 @@ DBがテストの邪魔になる
 ```
 
 Goらしいinterfaceのポイントは、**利用側が必要なメソッドだけを宣言する**こと（consumer-defined interface）。実装側はinterfaceの存在を知らなくてよい。
+インメモリ実装と SQLite 実装（`database/sql` + 生SQL）が同じinterfaceを満たし、`main.go` の配線だけで差し替えられる状態が最初の到達点。
 
 ### Phase 3：ドメインを複雑にする
 
