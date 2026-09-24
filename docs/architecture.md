@@ -48,6 +48,20 @@ api/
 - Serviceに `*http.Request` / `http.ResponseWriter` を渡さない
 - RepositoryにHTTPの概念を持ち込まない
 - ルーティングは Go 1.22+ の `http.ServeMux`（`"GET /todos/{id}"` + `r.PathValue`）で書く
+- 層は同一パッケージ内のファイル分けなので、上の境界はコンパイラでなく規律で守る。隣の層との接点は「相手のメソッド一覧」、Phase 2 以降は利用側に置いた interface で読む
+
+### 判断の基本形
+
+迷ったら「戻すのが安い方」を選び、隣のエンドポイントと揃える。
+
+- **外向きはリソース指向で固定する**。URL は名詞、操作は HTTP メソッド。ユースケースとのズレは Handler が吸収し、Service はユースケースの語彙で書く。状態遷移（完了など）を `PATCH` の属性更新で表すかコントローラーリソース（`POST /todos/{id}/complete`）で表すかは Phase 3 で1度決め、以後は混ぜない
+- **バリデーションは所有する層で行う**。形式（JSON が壊れている、id が数字でない）は Handler、意味（name が空、期限が過去）は `Todo` のメソッドで、Service がそれを呼ぶ。Service は Handler が先に弾くことを前提にしない。Service はドメインのエラー（`ErrXxx`）を返し、Handler が `errors.Is` でステータスコードに翻訳する
+- **レスポンス型は `Todo` を借りる**のが既定。次のどれかに当たったら、そのリソースの全エンドポイントで `handler.go` に `xxxResponse` を切り、変換関数も `handler.go` に置く
+  1. `Todo` に外へ出したくないフィールドが増えた
+  2. JSON の形が `Todo` の構造と違う（日時の書式、ネスト、一覧と詳細で項目が違う）
+  3. `Todo` から `json` タグを外したい
+- **Service と Repository は同じ `Todo` を渡す**。DB の列と `Todo` の表現が食い違ったときだけ Repository 内に行用の struct や変換を置く
+- **公開（大文字）は `main` から触るものだけ**。`Handler` / `NewHandler` / `Store` / `NewStore` / `Todo`。リクエスト型やヘルパは小文字。型名はパッケージ名で修飾される前提で短くする（`todo.Handler`。`todo.TodoHandler` にしない）
 
 ---
 
