@@ -38,8 +38,8 @@ internal/
     repository.go
     todo.go          # Todo構造体
 api/
-  openapi.yaml       # 外部契約（正本）
-  *.http             # 動作確認用リクエスト
+  *.http             # 動作確認用リクエスト（Phase 1 はこれが主体）
+  openapi.yaml       # 外部契約（Phase 2 以降で正本にする）
 ```
 
 ### 依存ルール
@@ -158,8 +158,9 @@ Before / After を比較する
 
 ---
 
-## API契約
+## API契約と動作確認
 
-- 実装より先に `api/openapi.yaml` で外部契約を書き、それを満たすように実装する
-- 動作確認は `api/*.http` / curl で行う。GUIは作らない
+- Phase 1 はコードを書いて体感することを優先する。`api/*.http` / curl で叩きながら進め、OpenAPI は後追いで書いてもよい
+- Phase 2 以降、外部から見た振る舞いを固定したくなった時点で `api/openapi.yaml` を正本にする（理想はスキーマファーストだが、Phase 1 では強制しない）
 - OpenAPIは手書きし、構文・網羅性・整合性の補正はAIに任せる。ただし直すことより「何がまずいか」のフィードバックが主目的
+- GUIは作らず `.http` を主体にする。状態確認が面倒になったら Swagger UI や AI生成のテストGUIを検討する
