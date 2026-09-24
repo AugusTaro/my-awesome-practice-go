@@ -6,6 +6,9 @@
 # Air
 tmp/
 
+# go build の出力
+/server
+
 # OS/editor
 .DS_Store
 .vscode/
