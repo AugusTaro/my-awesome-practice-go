@@ -29,7 +29,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
-	todoHandler := todo.NewTodoHandler(todo.NewTodoStore())
+	todoHandler := todo.NewHandler(todo.NewStore())
 	mux.HandleFunc("POST /todos", todoHandler.CreateTodo)
 	mux.HandleFunc("GET /todos", todoHandler.GetTodos)
 	http.ListenAndServe(":8080", mux)

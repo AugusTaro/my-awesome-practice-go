@@ -1,17 +1,17 @@
 package todo
 
-type TodoStore struct {
+type Store struct {
 	todos  []Todo
 	nextID int
 }
 
-func NewTodoStore() *TodoStore {
-	return &TodoStore{
+func NewStore() *Store {
+	return &Store{
 		todos:  []Todo{},
 		nextID: 1,
 	}
 }
-func (s *TodoStore) Add(name string) Todo {
+func (s *Store) Add(name string) Todo {
 	todo := Todo{
 		ID:   s.nextID,
 		Name: name,
@@ -21,6 +21,6 @@ func (s *TodoStore) Add(name string) Todo {
 	return todo
 }
 
-func (s *TodoStore) List() []Todo {
+func (s *Store) List() []Todo {
 	return s.todos
 }
