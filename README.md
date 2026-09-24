@@ -2,7 +2,8 @@
 
 このリポジトリは、GoでTodo APIをフルスクラッチ実装しながら、
 
-軽量クリーンアーキテクチャ + DDD-lite の判断軸を身につけるための学習用リポジトリです。
+極力ライブラリを使わず `net/http` と生SQLでWebサーバを手書きし、シンプルな3層アーキテクチャと Goらしいinterfaceの切り方を学ぶための学習用リポジトリです。
+Clean Architecture や DDD は最初から採用せず、実装上の痛みが出たときに必要な分だけ導入します。
 
 詳しい設計方針は [docs/architecture.md](docs/architecture.md) を参照
 

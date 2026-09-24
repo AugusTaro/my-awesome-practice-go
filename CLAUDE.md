@@ -24,23 +24,23 @@ go run ./cmd/server               # サーバ起動（実装後）
 
 ## アーキテクチャ
 
-詳細・コード例・設計判断の理由はすべて `docs/architecture.md` が正本。要点のみ:
+詳細・設計判断の理由はすべて `docs/architecture.md` が正本。要点のみ:
 
-**軽量クリーンアーキテクチャ + DDD-lite**（契約駆動）
+**Feature 単位のシンプルな3層**。Clean Architecture / DDD は採用するものではなく、実装上の痛みが出た箇所に必要な分だけ導入する設計手法（学習用なので痛みは意図的に作る）。
 
 ```txt
-OpenAPI(契約を先に確定) → handler → service → repository(interface) → DB(生SQL)
-                          (net/http)          ※interfaceは利用側=serviceが定義
+OpenAPI(契約を先に確定) → handler → service → repository → DB(生SQL)
+                          (net/http)
 ```
 
 ### ディレクトリ構成（予定）
 
 - `cmd/server/main.go` — 起動・DB接続・ServeMux配線（依存注入はここ）
-- `internal/handler/` — HTTP受付。`http.ResponseWriter`/`*http.Request` を触るのはここだけ
-- `internal/service/` — ビジネスロジック+段取り。**repository interfaceをここに定義**（consumer-defined interface）
-- `internal/repository/` — 生SQL実装（`database/sql` + SQLite）。interfaceをimportせず暗黙的に満たす
-- `internal/model/` — 構造体+振る舞いメソッド（軽量entity。ビジネスルールはここに置く）
-- `internal/dto/` — HTTP入出力用構造体
+- `internal/todo/` — Feature 単位で1パッケージ
+  - `handler.go` — HTTP受付。`http.ResponseWriter`/`*http.Request` を触るのはここだけ
+  - `service.go` — ユースケース・業務処理
+  - `repository.go` — 生SQL実装（`database/sql` + SQLite）
+  - `todo.go` — Todo構造体
 - `api/openapi.yaml` — 外部契約の正本。実装より先に書く。`api/*.http` で動作確認
 
 ### 守るべき制約
@@ -48,10 +48,9 @@ OpenAPI(契約を先に確定) → handler → service → repository(interface)
 - handler → repository の直接呼び出し禁止。handlerにSQLを書かない
 - serviceに `*http.Request`/`http.ResponseWriter` を渡さない
 - repositoryにHTTP概念を持ち込まない
-- modelを直接HTTPレスポンスにしない（dto経由）
 - 実装はOpenAPIの契約に従う（契約を後追いで勝手に変えない）
 - フレームワーク（gin等）・ORMは使わない。`net/http` 標準（Go 1.22+ の `http.ServeMux` メソッド別ルーティング・`r.PathValue`）と生SQL
-- **DDDをやりすぎない**: 1周目はValue Object/Aggregateを先回りして作らない。2周目でルールが生まれた時に導入（判断軸は docs/architecture.md の2周目セクション参照）
+- **先回りして抽象化しない**: Phase 1 では interface / Value Object / Aggregate を作らない。導入タイミングは docs/architecture.md の「学習フェーズ」参照
 
 ## ドキュメント
 
