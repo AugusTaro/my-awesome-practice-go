@@ -31,12 +31,9 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("POST /todos", func(w http.ResponseWriter, r *http.Request) {
-		CreateTodoHandler(w, r, &store)
-	})
-	mux.HandleFunc("GET /todos", func(w http.ResponseWriter, r *http.Request) {
-		GetTodosHandler(w, r, &store)
-	})
+	todoHandler := NewTodoHandler(&store)
+	mux.HandleFunc("POST /todos", todoHandler.CreateTodo)
+	mux.HandleFunc("GET /todos", todoHandler.GetTodos)
 	http.ListenAndServe(":8080", mux)
 }
 
@@ -68,20 +65,29 @@ func (s *TodoStore) List() []Todo {
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK\n")
 }
-func CreateTodoHandler(w http.ResponseWriter, r *http.Request, s *TodoStore) {
+
+type TodoHandler struct {
+	store *TodoStore
+}
+
+func NewTodoHandler(store *TodoStore) *TodoHandler {
+	return &TodoHandler{store: store}
+}
+
+func (th *TodoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req createTodoRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	todo := s.Add(req.Name)
+	todo := th.store.Add(req.Name)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(todo)
 }
-func GetTodosHandler(w http.ResponseWriter, r *http.Request, s *TodoStore) {
+func (th *TodoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.List())
+	json.NewEncoder(w).Encode(th.store.List())
 }
