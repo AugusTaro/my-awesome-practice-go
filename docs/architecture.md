@@ -230,13 +230,13 @@ Service を usecase と domain service に「割る」のではない。ルー�
 
 Todo で固めた構成をそのまま横に増やし、Todo では出なかった痛みを全部出す。
 
-**集約とルール**
+#### 集約とルール
 
 - `book`：蔵書。同じタイトルが複数冊。「在庫 0 なら貸出不可」
 - `member`：会員。「延滞中は新規貸出不可」「停止中は貸出不可」「5冊まで」
 - `loan`：貸出。「返却期限 14 日」「延長は1回まで、延滞後は不可」。状態は 貸出中 → 返却済み / 延滞
 
-**リソース**
+#### リソース
 
 ```txt
 POST   /books               GET /books/{id}
@@ -246,13 +246,13 @@ POST   /loans/{id}/return   # 跨ぐ操作。loan 状態変更 + book 在庫戻�
 POST   /loans/{id}/extend
 ```
 
-**adapter**
+#### adapter
 
 - `adapter/http`：上のハンドラ
 - `adapter/worker`：日次で延滞検知して `loan` を延滞に遷移、`member` に反映。HTTP 起点でない入力側アダプタ
 - `adapter/mail`（または `slack`）：延滞通知。`loan` 側で `Notifier` interface を宣言し、adapter が満たす
 
-**痛みが出る順**
+#### 痛みが出る順
 
 1. 「5冊まで」「延滞中は不可」を `POST /loans` の Service に書くと `member` の内部を覗きたくなる → `member.CanBorrow()` に引き上げる
 2. 貸出で book と loan の2つの Repository を触る → トランザクションを Service が開く形を決める

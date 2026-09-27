@@ -26,32 +26,33 @@ go run ./cmd/server               # サーバ起動（実装後）
 
 詳細・設計判断の理由はすべて `docs/architecture.md` が正本。要点のみ:
 
-**Feature 単位のシンプルな3層**。Clean Architecture / DDD は採用するものではなく、実装上の痛みが出た箇所に必要な分だけ導入する設計手法（学習用なので痛みは意図的に作る）。
+**ヘキサゴナルベースの3層 + Feature（集約）単位**。Clean Architecture / DDD は採用するものではなく、実装上の痛みが出た箇所に必要な分だけ導入する設計手法（学習用なので痛みは意図的に作る）。
 
 ```txt
-handler → service → repository → 保存先（インメモリ → SQLite）
+adapter/http（Handler） → <feature>.Service → <feature>.Store → 保存先（インメモリ → SQLite）
 (net/http)
 ```
 
 ### ディレクトリ構成（予定）
 
-- `cmd/server/main.go` — 起動・DB接続・ServeMux配線（依存注入はここ）
-- `internal/todo/` — Feature 単位で1パッケージ
-  - `handler.go` — HTTP受付。`http.ResponseWriter`/`*http.Request` を触るのはここだけ
-  - `service.go` — ユースケース・業務処理
+- `cmd/server/main.go` — 起動・DB接続・配線（依存注入はここ）
+- `internal/adapter/http/` — Handler（リソース単位の `TodoHandler` 等）と `router.go`。`http.ResponseWriter`/`*http.Request` を触るのはここだけ。リクエスト/レスポンス型もここ
+- `internal/<feature>/` — Feature = 一緒に整合性を守る範囲（集約）。Service は基本1つ
+  - `todo.go` — エンティティ（Phase 3 以降ルールはここ）
+  - `service.go` — 段取り（Phase 2 まではルールもここ）
   - `repository.go` — 永続化。Phase 1 はインメモリのスライス、Phase 2 で `database/sql` + SQLite（生SQL）に差し替え
-  - `todo.go` — Todo構造体
 - `api/*.http` — 動作確認用リクエスト。Phase 1 はこれを主体にコードを書いて体感する
 - `api/openapi.yaml` — 外部契約。Phase 1 では後追いでよく、Phase 2 以降で正本にする
 
 ### 守るべき制約
 
+- 依存は `adapter → feature` の一方向。feature 間も一方向で、相手の公開型・メソッド経由のみ（相手の Repository・内部型に触らない）
 - handler → repository の直接呼び出し禁止。handlerにSQLを書かない
 - serviceに `*http.Request`/`http.ResponseWriter` を渡さない
 - repositoryにHTTP概念を持ち込まない
 - `api/openapi.yaml` を正本にした後は、実装は契約に従う（契約を後追いで勝手に変えない）
 - フレームワーク（gin等）・ORMは使わない。`net/http` 標準（Go 1.22+ の `http.ServeMux` メソッド別ルーティング・`r.PathValue`）。DBを入れるときは生SQL
-- **先回りして抽象化しない**: Phase 1 では interface / Value Object / Aggregate を作らない。導入タイミングは docs/architecture.md の「学習フェーズ」参照
+- **先回りして抽象化しない**: interface は差し替え・テスト・実装の外出しのどれかが起きたら利用側に切る。Value Object / Aggregate は Phase 3 から。Domain Service という型は作らない。導入タイミングは docs/architecture.md の「学習フェーズ」参照
 
 ## ドキュメント
 
