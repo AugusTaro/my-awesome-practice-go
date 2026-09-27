@@ -1,8 +1,10 @@
-package todo
+package web
 
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/AugusTaro/my-awesome-practice-go/internal/todo"
 )
 
 type createTodoRequest struct {
@@ -10,10 +12,10 @@ type createTodoRequest struct {
 }
 
 type Handler struct {
-	store *Store
+	store *todo.Store
 }
 
-func NewHandler(store *Store) *Handler {
+func NewHandler(store *todo.Store) *Handler {
 	return &Handler{store: store}
 }
 

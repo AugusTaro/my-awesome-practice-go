@@ -36,7 +36,7 @@ adapter（外界との接続） → feature（コア：ルール + 段取り + �
 
 | 層 | 責務 | 置き場 |
 | --- | --- | --- |
-| Handler | HTTPの入出力。`http.ResponseWriter` / `*http.Request` を触るのはここだけ | `internal/adapter/http` |
+| Handler | HTTPの入出力。`http.ResponseWriter` / `*http.Request` を触るのはここだけ | `internal/adapter/web` |
 | Service | ユースケースの段取り。Phase 2 までは業務ルールもここ | `internal/<feature>/service.go` |
 | Repository | 永続化。最初はインメモリのスライス。DBが必要になったら `database/sql` + SQLite で生SQL | `internal/<feature>/repository.go` |
 
@@ -63,7 +63,7 @@ cmd/
     main.go            # 起動・DB接続・配線（依存注入はここ）
 internal/
   adapter/
-    http/              # 入力側。リソース単位の TodoHandler / TagHandler、router.go
+    web/               # 入力側。リソース単位の TodoHandler / TagHandler、router.go
     worker/            # 入力側。ジョブ・cron（必要になったら）
     <外部名>/          # 出力側。複数 Feature で共有する外部クライアント（必要になったら）
   todo/
@@ -89,7 +89,7 @@ Repository を `adapter/sqlite` のように外へ出したくなる条件は2�
 - Repository に HTTP の概念を持ち込まない
 - トランザクションを知っていいのは Service まで。Handler とエンティティは知らない
 - 集約を跨ぐ操作は「主に変わる側」の Feature の Service に置く
-- ルーティングは Go 1.22+ の `http.ServeMux`（`"GET /todos/{id}"` + `r.PathValue`）。`adapter/http/router.go` に集約する
+- ルーティングは Go 1.22+ の `http.ServeMux`（`"GET /todos/{id}"` + `r.PathValue`）。`adapter/web/router.go` に集約する
 - Service と Repository は同一パッケージ内のファイル分けなので、その境界は規律で守る。ただし Service のフィールドを interface 型で宣言すれば、Service から実装の非公開フィールドには触れなくなる（Phase 2 以降）
 - 非公開フィールドは同一パッケージ内でもメソッド経由でしか変えない（Phase 3 以降の規律）。言語で守りたくなったら型だけサブパッケージに出す
 
@@ -97,17 +97,17 @@ Repository を `adapter/sqlite` のように外へ出したくなる条件は2�
 
 迷ったら「戻すのが安い方」を選び、隣のエンドポイントと揃える。
 
-- **外向きはリソース指向で固定する**。URL は名詞、操作は HTTP メソッド。Handler はリソース単位の struct（`TodoHandler`, `TagHandler`）にメソッドを束ねる。これは可読性のためで必須ではない。URL と変更される集約のずれ（`PUT /todos/{id}/tags/{tagId}` は tag ではなく todo を変える）は `adapter/http` が吸収し、Service はユースケースの語彙で書く。状態遷移（完了など）を `PATCH` の属性更新で表すかコントローラーリソース（`POST /todos/{id}/complete`）で表すかは Phase 3 で1度決め、以後は混ぜない
+- **外向きはリソース指向で固定する**。URL は名詞、操作は HTTP メソッド。Handler はリソース単位の struct（`TodoHandler`, `TagHandler`）にメソッドを束ねる。これは可読性のためで必須ではない。URL と変更される集約のずれ（`PUT /todos/{id}/tags/{tagId}` は tag ではなく todo を変える）は `adapter/web` が吸収し、Service はユースケースの語彙で書く。状態遷移（完了など）を `PATCH` の属性更新で表すかコントローラーリソース（`POST /todos/{id}/complete`）で表すかは Phase 3 で1度決め、以後は混ぜない
 - **ルールは所有するものに置く**。Phase 2 までは Service に直接書く（トランザクションスクリプト）。Phase 3 で `Todo` のメソッドに引き上げる。単一のエンティティに置けないルール（複数の集約を対等に見て決まる判定）は同パッケージの関数にする。Domain Service という型は作らない
 - **バリデーションは所有する層で行う**。形式（JSON が壊れている、id が数字でない）は Handler、意味（name が空、期限が過去）はルールの置き場と同じ。Service は Handler が先に弾くことを前提にしない。Service はドメインのエラー（`ErrXxx`）を返し、Handler が `errors.Is` でステータスコードに翻訳する
-- **リクエスト型は本文のあるエンドポイントごとに最初から `adapter/http` に切る**
-- **レスポンス型は `Todo` を借りる**のが既定。次のどれかに当たったら、そのリソースの全エンドポイントで `adapter/http` に `xxxResponse` を切り、変換関数も同じ場所に置く
+- **リクエスト型は本文のあるエンドポイントごとに最初から `adapter/web` に切る**
+- **レスポンス型は `Todo` を借りる**のが既定。次のどれかに当たったら、そのリソースの全エンドポイントで `adapter/web` に `xxxResponse` を切り、変換関数も同じ場所に置く
   1. `Todo` に外へ出したくないフィールドが増えた
   2. JSON の形が `Todo` の構造と違う（日時の書式、ネスト、一覧と詳細で項目が違う）
   3. `Todo` から `json` タグを外したい
 - **Service と Repository は同じ `Todo` を渡す**。DB の列と `Todo` の表現が食い違ったときだけ Repository 内に行用の struct や変換を置く
 - **interface は利用側に切る**。差し替えたい・実装を外に出したい・テストで偽物を入れたい、のどれかが起きたら切る。それまでは具体型でよい。実装を Feature の外に出すときは interface とセット（片方だけでは意味が薄い）
-- **公開（大文字）は `adapter`・`main`・他 Feature から触るものだけ**。Feature 側は `Service` / `NewService` / `Store` / `NewStore` / `Todo` / `ID`。ヘルパは小文字。Feature 内の型名はパッケージ名で修飾される前提で短くする（`todo.Service`。`todo.TodoService` にしない）。逆に `adapter/http` はパッケージ名が層なので、型名がリソース名を背負う（`TodoHandler`）
+- **公開（大文字）は `adapter`・`main`・他 Feature から触るものだけ**。Feature 側は `Service` / `NewService` / `Store` / `NewStore` / `Todo` / `ID`。ヘルパは小文字。Feature 内の型名はパッケージ名で修飾される前提で短くする（`todo.Service`。`todo.TodoService` にしない）。逆に `adapter/web` はパッケージ名が層なので、型名がリソース名を背負う（`TodoHandler`）
 
 ---
 
@@ -136,14 +136,14 @@ Domain Service は「エンティティに置けなかったルールの残り�
 ### Phase 1：素朴なWeb API
 
 ```txt
-adapter/http（Handler） → todo.Service → todo.Store → インメモリのスライス
+adapter/web（Handler） → todo.Service → todo.Store → インメモリのスライス
 ```
 
 - 具体型でよい。interface は切らない
 - 単純な struct でよい。振る舞いを持たせない（ルールは Service に直接書く）
 - 永続化はインメモリで十分。DB を入れない
 - DDD しない。Clean Architecture を意識しない
-- Handler は最初から `adapter/http` に置く。Todo だけの段階では Feature 内に置くのと差が無いが、構成を固定するために最初から分ける
+- Handler は最初から `adapter/web` に置く。Todo だけの段階では Feature 内に置くのと差が無いが、構成を固定するために最初から分ける
 
 機能は Todo の CRUD。
 
@@ -171,7 +171,7 @@ DBがテストの邪魔になる
 Goらしい interface のポイントは、**利用側が必要なメソッドだけを宣言する**こと（consumer-defined interface）。実装側は interface の存在を知らなくてよい。
 インメモリ実装と SQLite 実装（`database/sql` + 生SQL）が同じ interface を満たし、`main.go` の配線だけで差し替えられる状態が最初の到達点。
 
-同じ原則を Handler → Service にも適用する。`adapter/http` 側に `todoService` interface を宣言し、`*todo.Service` の具体型ではなくそれを受け取る。別パッケージなので自然にこの形になり、Phase 4 で Service を分解しても Handler を変えずに済む。
+同じ原則を Handler → Service にも適用する。`adapter/web` 側に `todoService` interface を宣言し、`*todo.Service` の具体型ではなくそれを受け取る。別パッケージなので自然にこの形になり、Phase 4 で Service を分解しても Handler を変えずに済む。
 
 ### Phase 3：ドメインを複雑にする
 
@@ -248,7 +248,7 @@ POST   /loans/{id}/extend
 
 #### adapter
 
-- `adapter/http`：上のハンドラ
+- `adapter/web`：上のハンドラ
 - `adapter/worker`：日次で延滞検知して `loan` を延滞に遷移、`member` に反映。HTTP 起点でない入力側アダプタ
 - `adapter/mail`（または `slack`）：延滞通知。`loan` 側で `Notifier` interface を宣言し、adapter が満たす
 

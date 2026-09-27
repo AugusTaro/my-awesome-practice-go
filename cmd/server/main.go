@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/AugusTaro/my-awesome-practice-go/internal/adapter/web"
 	"github.com/AugusTaro/my-awesome-practice-go/internal/todo"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -29,7 +30,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
-	todoHandler := todo.NewHandler(todo.NewStore())
+	todostore := todo.NewStore()
+	todoHandler := web.NewHandler(todostore)
 	mux.HandleFunc("POST /todos", todoHandler.CreateTodo)
 	mux.HandleFunc("GET /todos", todoHandler.GetTodos)
 	http.ListenAndServe(":8080", mux)

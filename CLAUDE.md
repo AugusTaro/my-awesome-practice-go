@@ -29,14 +29,14 @@ go run ./cmd/server               # サーバ起動（実装後）
 **ヘキサゴナルベースの3層 + Feature（集約）単位**。Clean Architecture / DDD は採用するものではなく、実装上の痛みが出た箇所に必要な分だけ導入する設計手法（学習用なので痛みは意図的に作る）。
 
 ```txt
-adapter/http（Handler） → <feature>.Service → <feature>.Store → 保存先（インメモリ → SQLite）
+adapter/web（Handler） → <feature>.Service → <feature>.Store → 保存先（インメモリ → SQLite）
 (net/http)
 ```
 
 ### ディレクトリ構成（予定）
 
 - `cmd/server/main.go` — 起動・DB接続・配線（依存注入はここ）
-- `internal/adapter/http/` — Handler（リソース単位の `TodoHandler` 等）と `router.go`。`http.ResponseWriter`/`*http.Request` を触るのはここだけ。リクエスト/レスポンス型もここ
+- `internal/adapter/web/` — Handler（リソース単位の `TodoHandler` 等）と `router.go`。`http.ResponseWriter`/`*http.Request` を触るのはここだけ。リクエスト/レスポンス型もここ
 - `internal/<feature>/` — Feature = 一緒に整合性を守る範囲（集約）。Service は基本1つ
   - `todo.go` — エンティティ（Phase 3 以降ルールはここ）
   - `service.go` — 段取り（Phase 2 まではルールもここ）
